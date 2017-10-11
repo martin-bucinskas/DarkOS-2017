@@ -2,6 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "vga_data.c"
+#include "character_control.c"
+
+#include "../../libs/data_structures/string.c"
+
 enum vga_colour
 {
 	BLACK = 0,
@@ -32,68 +37,72 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t colour)
 	return (uint16_t) uc | (uint16_t) colour << 8;
 }
 
-size_t strlen(const char* str)
-{
-	size_t len = 0;
-	
-	while (str[len])
-		len++;
-	return len;
-}
-
-static const size_t VGA_WIDTH = 80;
-static const size_t VGA_HEIGHT = 25;
-
-size_t terminal_row;
-size_t terminal_column;
-uint8_t terminal_colour;
-uint16_t* terminal_buffer;
+struct VGA_Data vga_data = {0, 0, 0, 0, 80, 25};
 
 void terminal_initialize(void)
 {
-	terminal_row = 0;
-	terminal_column = 0;
-	terminal_colour = vga_entry_colour(LIGHT_GREEN, BLACK);
-	terminal_buffer = (uint16_t*) 0xB8000;
+	vga_data.terminal_row = 0;
+	vga_data.terminal_column = 0;
+	vga_data.terminal_colour = vga_entry_colour(LIGHT_GREEN, BLACK);
+	vga_data.terminal_buffer = (uint16_t*) 0xB8000;
 
-	for (size_t y = 0; y < VGA_HEIGHT; y++)
+	for (size_t y = 0; y < vga_data.VGA_HEIGHT; y++)
 	{
-		for (size_t x = 0; x < VGA_WIDTH; x++)
+		for (size_t x = 0; x < vga_data.VGA_WIDTH; x++)
 		{
-			const size_t index = y * VGA_WIDTH + x;
-			terminal_buffer[index] = vga_entry(' ', terminal_colour);
+			const size_t index = y * vga_data.VGA_WIDTH + x;
+			vga_data.terminal_buffer[index] = vga_entry(' ', vga_data.terminal_colour);
 		}
 	}
 }
 
 void terminal_setcolour(uint8_t colour)
 {
-	terminal_colour = colour;
+	vga_data.terminal_colour = colour;
 }
 
 void terminal_putentryat(char c, uint8_t colour, size_t x, size_t y)
 {
-	const size_t index = y * VGA_WIDTH + x;
-	terminal_buffer[index] = vga_entry(c, colour);
+	const size_t index = y * vga_data.VGA_WIDTH + x;
+	vga_data.terminal_buffer[index] = vga_entry(c, colour);
+}
+
+void terminal_scroll(void)
+{
+	for (size_t y = 0; y < vga_data.VGA_HEIGHT; y++)
+	{
+		for (size_t x = 0; x < vga_data.VGA_WIDTH; x++)
+		{
+			vga_data.terminal_row = 0;
+			vga_data.terminal_column = 0;
+		}
+	}
 }
 
 void terminal_putchar(char c)
 {
-	if (c == '\n')
+	//handle_control_char(c);
+
+	if (is_char_a_control_char(c) > 0)
 	{
-		terminal_column = 0;
-		terminal_row++;
+		// Pass the VGA_Data struct by reference rather than by value.
+		handle_control_char(c, &vga_data);
 	}
 	else
 	{
-		terminal_putentryat(c, terminal_colour, terminal_column, terminal_row);
+		terminal_putentryat(c, vga_data.terminal_colour, vga_data.terminal_column, vga_data.terminal_row);
 	}
-	
-	if (++terminal_column == VGA_WIDTH)
+
+	// If terminal is full, it will start at 0,0.
+	if (++vga_data.terminal_column == vga_data.VGA_WIDTH)
 	{
-		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT)
-			terminal_row = 0;
+		vga_data.terminal_column = 0;
+		if (++vga_data.terminal_row == vga_data.VGA_HEIGHT)
+		{
+			terminal_scroll();
+			//TODO: Move all of the text 1 row above, place cursor at new line.
+			//vga_data.terminal_row = 0;
+		}
 	}
 }
 

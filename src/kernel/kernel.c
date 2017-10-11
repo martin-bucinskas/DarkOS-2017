@@ -24,7 +24,15 @@ void kernel_main(void)
 	terminal_writestring("2017\n");
 
 	terminal_setcolour(vga_entry_colour(RED, BLACK));	
-	terminal_writestring("Developed by Martin B.");
+	terminal_writestring("Developed by \tMartin B.");
 
-	test_monitor();
+	terminal_setcolour(vga_entry_colour(RED, BLACK));	
+	terminal_writestring("Testing double back slash \\this is working?\n");
+
+	for (size_t i = 0; i < 30; i++)
+	{
+		terminal_writestring("Testing terminal scrolling...\n");
+	}
+
+	terminal_writestring("Should display on screen!\n");
 }

@@ -1,0 +1,7 @@
+Implemented:
+
+	- Fully implemented control characters (ASCII) for printing to console.
+	  (\a \b \n \r \t \0 \v \f \\)
+
+To Do:
+	- Terminal Scrolling
